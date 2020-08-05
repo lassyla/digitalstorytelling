@@ -1,3 +1,6 @@
+<head>    <link rel="shortcut icon" href="src/favicon.png">
+</head> 
+
 <body>
     <div id="container"></div>
     <div id="info"></div>
@@ -19,25 +22,6 @@
         right: 30px; 
     }
 </style>
-<script type="application/x-glsl" id="sky-vertex">  
-    varying vec2 vUV;
-    
-    void main() {  
-      vUV = uv;
-      vec4 pos = vec4(position, 1.0);
-      gl_Position = projectionMatrix * modelViewMatrix * pos;
-    }
-    </script>
-    
-    <script type="application/x-glsl" id="sky-fragment">  
-    uniform sampler2D texture;  
-    varying vec2 vUV;
-    
-    void main() {  
-      vec4 sample = texture2D(texture, vUV);
-      gl_FragColor = vec4(sample.xyz, sample.w);
-    }
-    </script>  
 
 
         
@@ -45,11 +29,8 @@
 
         //https://thebookofshaders.com/04/
         var container;
-        var camera, scene, renderer, controls;
-        // var waterUniforms, skyUniforms; 
-        // var water, tidehand, sand, clockface; 
-        // var angle, date, height; 
-        // var pastHighTide = new Date("September 20, 2018 5:12:00")
+        var camera, scene, renderer, controls, mixer;
+        var clock = new THREE.Clock();
 
         init();
         animate();
@@ -74,108 +55,12 @@
 
             scene = new THREE.Scene();
             //var light = new THREE.AmbientLight( 0x404040 ); // soft white light
-            var light = new THREE.AmbientLight( 0xffffff ); // soft white light
+            var light = new THREE.AmbientLight( 0xaaaaaa ); 
             scene.add( light );
+            var directionalLight = new THREE.DirectionalLight( 0xffffff, 1 );
+            scene.add( directionalLight );
 
-            // date = new Date(); 
-            // height = Math.cos(-1 * angle) / 7.0; 
-
-          
-            // //sand geometry made in blender
-            // var loader = new THREE.GLTFLoader();
-            // loader.load("sand.glb", 
-            //     function(gltf){
-            //         var sandUniforms = ({
-            //             u_camera: {type:"v3", value: camera.position}, 
-            //             u_hour: {type: "f", value: date.getHours() + date.getMinutes() / 60}
-            //         }); 
-            //         material = new THREE.ShaderMaterial( {
-            //             uniforms: sandUniforms, 
-            //             vertexShader: document.getElementById("sandVertex").textContent,
-            //             fragmentShader: document.getElementById("sandFragment").textContent, 
-            //             transparent: true, 
-            //         } );
-            //         var sandy = gltf.scene; 
-            //         sandy.traverse( function ( child ) {
-            //         if ( child instanceof THREE.Mesh ) { child.material = material;} } );
-
-            //         sandy.rotation.x += Math.PI / 2; 
-            //         sandy.scale.set(2, 2, 2); 
-            //         sandy.position.z = -0.001; 
-            //         //scene.add(sandy); 
-            //     }, 
-            //     function(xhr){console.log("loaded glb")},
-            //     function(err){console.log(err)}
-            // );
-                        
-            
-            // geometry = new THREE.PlaneGeometry( .1, 2);
-            // material = new THREE.MeshBasicMaterial( { color: 0xffffff, side: THREE.DoubleSide, transparent:true} );
-            // stick = new THREE.Mesh( geometry, material );
-            // stick.position.y += .9; 
-            // tidehand = new THREE.Group(); 
-            // //tidehand.add(stick); 
-            // tidehand.rotation.z = angle; 
-            // tidehand.position.z += 1.01; 
-            // // //scene.add( tidehand );
-
-            // var texture = new THREE.TextureLoader().load("clockface.png"); 
-            // geometry = new THREE.PlaneGeometry(6, 6); 
-            // material = new THREE.MeshBasicMaterial({map:texture, transparent: true, depthWrite: false}); 
-            // clockface = new THREE.Mesh(geometry, material); 
-            // clockface.position.z += 1;
-            // //scene.add(clockface); 
-
-            //skydome code from Ian Webster http://www.ianww.com/blog/2014/02/17/making-a-skydome-in-three-dot-js/
-            //we are inside of a sphere! 
-            // var geometry = new THREE.SphereGeometry(3000, 60, 40);  
-            // var textureLoader = new THREE.TextureLoader();
-
-
-            // var uniforms = {  
-            // texture: { type: 't', value: textureLoader.load('/360.png') }
-            // };
-
-            // var material = new THREE.ShaderMaterial( {  
-            // uniforms:       uniforms,
-            // vertexShader:   document.getElementById('sky-vertex').textContent,
-            // fragmentShader: document.getElementById('sky-fragment').textContent
-            // });
-
-            // skyBox = new THREE.Mesh(geometry, material);  
-            // skyBox.scale.set(-1, 1, 1);  
-            // skyBox.rotation.order = 'XZY';  
-            // skyBox.renderDepth = 1000.0;  
-            // scene.add(skyBox);  
-
-            // const loader = new THREE.TextureLoader();
-            // const bgTexture = loader.load('/360.png');
-            // scene.background = bgTexture;
-
-
-
-            //adding background
-            //const loader = new THREE.TextureLoader();
-            // const texture = loader.load(
-            // '/360.png',
-            // );
-            // texture.magFilter = THREE.LinearFilter;
-            // texture.minFilter = THREE.LinearFilter;
-
-            // const shader = THREE.ShaderLib.equirect;
-            // const material = new THREE.ShaderMaterial({
-            //     fragmentShader: shader.fragmentShader,
-            //     vertexShader: shader.vertexShader,
-            //     uniforms: shader.uniforms,
-            //     depthWrite: false,
-            //     side: THREE.BackSide,
-            // });
-            
-            // material.uniforms.tEquirect.value = texture;
-            // const plane = new THREE.BoxBufferGeometry(5,5,5);
-            // bgMesh = new THREE.Mesh(plane, material);
-            // scene.add(bgMesh);
-
+    
             //adding ground
             var sphereGeometry = new THREE.SphereGeometry( 8, 32, 32 );
             var sphereMaterial = new THREE.MeshBasicMaterial( {color: 0xffff00} );
@@ -186,11 +71,17 @@
 
             //adding scene
             var gltfLoader = new THREE.GLTFLoader();
-            gltfLoader.load("scene.gltf", 
+            gltfLoader.load("src/scene.gltf", 
                 function(gltf){
                     var s = gltf.scene; 
                     // s.traverse( function ( child ) {
                     // if ( child instanceof THREE.Mesh ) { child.material = material;} } );
+                    mixer = new THREE.AnimationMixer( s );
+                    for(var i = 0; i < gltf.animations.length; i++){
+                        var action = mixer.clipAction( gltf.animations[ i ] );
+                        action.play();
+                    }
+
                     scene.add(s); 
                 }, 
                 function(xhr){console.log("loaded gltf")},
@@ -216,6 +107,10 @@
         function animate() {
             controls.update(); 
             requestAnimationFrame( animate );
+            var delta = clock.getDelta();
+
+            if ( mixer ) mixer.update( delta );
+
             render();
         }
 
